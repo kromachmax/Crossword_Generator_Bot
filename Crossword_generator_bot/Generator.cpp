@@ -1,291 +1,292 @@
-#include "generator.h"
+#include <iostream>
+#include <vector>
+#include <string>
+#include<algorithm>
+#include "Header.h"
 
-Generator::Generator(std::vector<std::string>& w) : words_(std::move(w)), used_(words_.size(), false),
-board_(50, std::vector<char>(50, '_')), check_intersection_(50, std::vector<bool>(50, false)) {
+Board::Board(std::vector<std::u16string>& w) : words(std::move(w)), used(words.size(), false) {
 
-	std::sort(words_.begin(), words_.end(), [](const std::string& s1, const std::string& s2) {
+	std::sort(words.begin(), words.end(), [](const std::u16string& s1, const std::u16string& s2) {
 		if (s1.size() > s2.size())
-		return true;
+			return true;
 		else if (s1.size() < s2.size())
 			return false;
-	return s1 < s2;
+		return s1 < s2;
 		});
-
-	HorizontalPlacement({ 25, 25 - words_.size() / 2, 0 }, 0);
-	used_[0] = true;
-
 }
 
-std::string Generator::GetCrossword(bool language_flag) const noexcept {
+std::u16string Board::Print_Board() {
 
-	if (!succsess)
-		if (language_flag)
-			return "I couldn't make a crossword puzzle out of these words. \xF0\x9F\x98\x94\nTry a different set of words.";
-		else
-			return "Я не смог составить кроссворд из данных слов. \xF0\x9F\x98\x94\nПопробуйте другой набор слов.";
+	if (!CREATION)
+		return u"ERROR";
 
-	std::string crossword(
-		"<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\"\n"
-		"\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">\n"
-		"<html xmlns=\"http://www.w3.org/1999/xhtml\">\n"
-		"\t<head>\n"
-		"\t<meta http-equiv=\"Content-Type\" content=\"text/html;charset=utf-8\"/>\n"
-		"\t\t<style type = \"text/css\">\n"
-		"\t\t\tTABLE{"
-		"\t\t\t\tborder:4px double #399;\n"
-		"\t\t\t}\n"
-		"\t\t\tTD{\n"
-		"\t\t\t\tfont-family:\"Courier New\";\n"
-		"\t\t\t\tbackground:#fc0;\n"
-		"\t\t\t\tborder:1px solid #333;\n"
-		"\t\t\t\tempty-cells:hide;\n"
-		"\t\t\t\tpadding:5px;\n"
-		"\t\t\t}\n"
-		"\t\t</style>\n"
-		"\t</head>\n"
-		"\t<body>\n"
-		"\t\t<table>\n"
-	);
+	std::u16string crossword;
 
-	size_t left_border = 51, right_border = 0, upper_border = 51, bottom_border = 0;
-
-	for (size_t row = 0; row < board_.size(); ++row) {
-		for (size_t column = 0; column < board_.size(); ++column) {
-			if (board_[row][column] != '_') {
-				left_border = std::min(left_border, column);
-				right_border = std::max(right_border, column);
-				upper_border = std::min(upper_border, row);
-				bottom_border = std::max(bottom_border, row);
+	for (size_t row = 0; row < board.size(); ++row) {
+		for (size_t column = 0; column < board.size(); ++column) {
+			if (board[row][column] != u'_') {
+				Left_Bound = std::min(Left_Bound, column);
+				Right_Bound = std::max(Right_Bound, column);
+				Upper_Bound = std::min(Upper_Bound, row);
+				Lower_Bound = std::max(Lower_Bound, row);
 			}
 		}
 	}
 
-	for (size_t row = upper_border; row <= bottom_border; row++) {
-		crossword += "\t\t\t\n<tr>\n";
-		for (size_t column = left_border; column <= right_border; ++column) {
-			if (board_[row][column] != '_') {
-				crossword += "\t\t\t\t<td>";
-				crossword += board_[row][column];
-				crossword += "</td>\n";
+	crossword += u"<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\"\n";
+	crossword += u"\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">\n";
+	crossword += u"<html xmlns = \"http://www.w3.org/1999/xhtml\">\n";
+	crossword += u"<head>\n";
+	crossword += u"<meta http - equiv = \"Content-Type\" content = \"text/html; charset=utf-8\" / >\n";
+	crossword += u"<style type = \"text/css\">\n";
+	crossword += u"TABLE{";
+	crossword += u"border: 4px double #399;\n";
+	crossword += u"}\n";
+	crossword += u"TD{\n";
+	crossword += u"font-family:\"Courier New\";\n";
+	crossword += u"background: #fc0;\n";
+	crossword += u"border: 1px solid #333;\n";
+	crossword += u"empty - cells: hide;\n";
+	crossword += u"padding: 5px;\n";
+	crossword += u"}\n";
+	crossword += u"</style>\n";
+	crossword += u"</head>\n";
+	crossword += u"<body>\n";
+	crossword += u"<table>\n";
+
+	for (size_t row = Upper_Bound; row <= Lower_Bound; row++) {
+		crossword += u"<tr>\n";
+		for (size_t column = Left_Bound; column <= Right_Bound; ++column) {
+			if (board[row][column] != u'_') {
+				crossword += u"<td>";
+				crossword += board[row][column];
+				crossword += u"</td>";
 			}
 			else {
-				crossword += "\t\t\t\t<td style=\"background : white\">";
-				crossword += "</td>\n";
+				crossword += u"<td style=\"background : white\">";
+				crossword += u"</td>";
 			}
 		}
-		crossword += "\t\t\t\n</tr>\n";
+		crossword += u"\n</tr>\n";
 	}
 
-	crossword += "</table>\n</body>\n</html>\n";
+	crossword +=
+		u"</table>\n"
+		u"</body>\n"
+		u"</html>\n";
 
 	return crossword;
-
 }
 
-void Generator::Generate(size_t count_used, Direction dir) {
+
+
+inline void Board::setSpot(char16_t c, int row, int col) noexcept {
+	board[row][col] = c;
+}
+
+void Board::Generater(int count, direction direct) {
 
 	if (clock() - start > delay) return;
 
-	if (count_used == words_.size())
-		succsess = true;
-
-	if (succsess)
+	if (count == static_cast<int>(words.size())) {
+		CREATION = true;
 		return;
+	}
 
-	for (size_t number_of_word = 0; number_of_word < used_.size(); ++number_of_word) {
+	if (!count) {
+		for (int j = 0; j < static_cast<int>(words[0].size()); j++)
+			setSpot((words[0])[j], board.size() / 2, (board.size() - words[0].size()) / 2 + j);
+		used[count] = true;
+		Generater(count + 1, direction::DOWN);
+		return;
+	}
 
-		std::vector<GoodWord> options;
 
-		if (used_[number_of_word]) continue;
+	for (int number_of_word = 1; number_of_word < static_cast<int>(words.size()); number_of_word++) {
 
-		if (dir == Direction::VERTICALLY) {
-			if (VerticalVariants(words_[number_of_word], options))
-				VerticalProcessing(options, number_of_word, count_used);
+		if (used[number_of_word])continue;
 
-			else if (HorizontalVariants(words_[number_of_word], options))
-				HorizontalProcessing(options, number_of_word, count_used);
+		if (direct == direction::ACROSS) {
+
+			std::vector<good_word> Possible_options;
+			if (placeNextHor(words[number_of_word], Possible_options))
+				Horizontal_Proccessing(Possible_options, number_of_word, count);
+
+			else if (placeNextVer(words[number_of_word], Possible_options))
+				Vertical_Proccessing(Possible_options, number_of_word, count);
+
 		}
 		else {
-			if (HorizontalVariants(words_[number_of_word], options))
-				HorizontalProcessing(options, number_of_word, count_used);
 
-			else if (VerticalVariants(words_[number_of_word], options))
-				VerticalProcessing(options, number_of_word, count_used);
+			std::vector<good_word> Possible_options;
+			if (placeNextVer(words[number_of_word], Possible_options))
+				Vertical_Proccessing(Possible_options, number_of_word, count);
+
+			else if (placeNextHor(words[number_of_word], Possible_options))
+				Horizontal_Proccessing(Possible_options, number_of_word, count);
+
 		}
 	}
-
 }
 
-bool Generator::HorizontalVariants(const std::string& word, std::vector<GoodWord>& options) const {
+void Board::Vertical_Proccessing(std::vector<good_word>& Possible_options, int number_of_word, int count) {
 
-	size_t match, intersection;
+	used[number_of_word] = true;
 
-	for (size_t row = 1; row < board_.size() - 1; ++row) {
-		for (size_t column = 1; column < board_.size() - 1 - word.size(); ++column) {
+	std::sort(Possible_options.begin(), Possible_options.end(), [](const good_word& w1, const good_word& w2) {
+		return w1.number_of_intersections > w2.number_of_intersections;
+		});
 
-			if (!(board_[row][column - 1] == '_' && board_[row][column + word.size()] == '_'))
-				continue;
+	for (int i = 0; i < static_cast<int>(Possible_options.size()); i++) {
 
-			match = 2;
-			intersection = 0;
+		Vertical_Placement(Possible_options[i], number_of_word);
 
-			for (size_t s = 0; s < word.size(); ++s) {
+		Generater(count + 1, direction::ACROSS);
 
-				if (board_[row][column + s] == '_')
-					++match;
-				else if (board_[row][column + s] == word[s] && board_[row][column + s + 1] == '_'
-					&& board_[row][column + s - 1] == '_') {
+		if (CREATION) return;
 
-					match += 3;
-					++intersection;
+		Vertical_Cleaning(Possible_options[i], number_of_word);
+	}
+	used[number_of_word] = false;
+}
 
+void Board::Horizontal_Proccessing(std::vector<good_word>& Possible_options, int number_of_word, int count) {
+
+	used[number_of_word] = true;
+
+	std::sort(Possible_options.begin(), Possible_options.end(), [](const good_word& w1, const good_word& w2) {
+		return w1.number_of_intersections > w2.number_of_intersections;
+		});
+
+	for (int i = 0; i < static_cast<int>(Possible_options.size()); i++) {
+
+		Horizontal_Placement(Possible_options[i], number_of_word);
+
+		Generater(count + 1, direction::DOWN);
+
+		if (CREATION) return;
+
+		Horizontal_Cleaning(Possible_options[i], number_of_word);
+	}
+	used[number_of_word] = false;
+}
+
+
+void Board::Vertical_Placement(const good_word& word, int number_of_word)noexcept {
+	for (int i = 0; i < static_cast<int>(words[number_of_word].size()); i++) {
+		if (board[word.row + i][word.colomn] != u'_') {
+			check_intersection[word.row + i][word.colomn] = true;
+			continue;
+		}
+		else board[word.row + i][word.colomn] = words[number_of_word][i];
+	}
+}
+
+void Board::Horizontal_Placement(const good_word& word, int number_of_word)noexcept {
+	for (int i = 0; i < static_cast<int>(words[number_of_word].size()); i++) {
+		if (board[word.row][word.colomn + i] != u'_') {
+			check_intersection[word.row][word.colomn + i] = true;
+			continue;
+		}
+		else board[word.row][word.colomn + i] = words[number_of_word][i];
+	}
+}
+
+void Board::Horizontal_Cleaning(const good_word& word, int number_of_word)noexcept {
+	for (int i = 0; i < static_cast<int>(words[number_of_word].size()); i++) {
+		if (check_intersection[word.row][word.colomn + i]) {
+			check_intersection[word.row][word.colomn + i] = false;
+			continue;
+		}
+		else board[word.row][word.colomn + i] = u'_';
+	}
+}
+
+void Board::Vertical_Cleaning(const good_word& word, int number_of_word)noexcept {
+	for (int i = 0; i < static_cast<int>(words[number_of_word].size()); i++) {
+		if (check_intersection[word.row + i][word.colomn]) {
+			check_intersection[word.row + i][word.colomn] = false;
+			continue;
+		}
+		else board[word.row + i][word.colomn] = u'_';
+	}
+}
+
+inline char16_t Board::getSpot(int i, int j)const noexcept {
+	return board[i][j];
+}
+
+bool Board::placeNextVer(const std::u16string& word, std::vector<good_word>& options)const {
+	int match = 0;
+	bool key = 0;
+	for (int j = 1; j < static_cast<int>(board.size()) - 1; j++) {
+		for (int i = 1; i < static_cast<int>(board.size()) - static_cast<int>(word.size()) - 1; i++) {
+			for (int k = 0; k < static_cast<int>(word.size()); k++) {
+
+				if (getSpot(i + k, j) == u'_')
+					match++;
+
+				if (getSpot(i + k, j) == word[k]) {
+					match++;
+					if (getSpot(i + k + 1, j) == u'_' && getSpot(i + k - 1, j) == u'_') {
+						match += 2;
+						key++;
+					}
+					else break;
 				}
 
-				if (board_[row + 1][column + s] == '_' && board_[row - 1][column + s] == '_')
+				if (getSpot(i + k, j + 1) == u'_' && getSpot(i + k, j - 1) == u'_')
 					match += 2;
 
-			}
-
-			if (match == 3 * word.size() + 2 && intersection)
-				options.push_back({ row, column, intersection });
-		}
-	}
-	return options.size();
-
-}
-
-bool Generator::VerticalVariants(const std::string& word, std::vector<GoodWord>& options) const {
-
-	size_t match, intersection;
-
-	for (size_t column = 1; column < board_.size() - 1; ++column) {
-		for (size_t row = 1; row < board_.size() - 1 - word.size(); ++row) {
-
-			if (!(board_[row - 1][column] == '_' && board_[row + word.size()][column] == '_'))
-				continue;
-
-			match = 2;
-			intersection = 0;
-
-			for (size_t s = 0; s < word.size(); ++s) {
-
-				if (board_[row + s][column] == '_')
-					++match;
-				else if (board_[row + s][column] == word[s] && board_[row + s + 1][column] == '_'
-					&& board_[row + s - 1][column] == '_') {
-
-					match += 3;
-					++intersection;
-
+				if (getSpot(i - 1, j) == u'_' && getSpot((i + word.size()), j) == u'_') {
+					if (k == 0) match += 2;
 				}
 				else break;
 
-				if (board_[row + s][column + 1] == '_' && board_[row + s][column - 1] == '_')
-					match += 2;
-
 			}
-			if (match == 3 * word.size() + 2 && intersection)
-				options.push_back({ row, column, intersection });
-
+			if (match == 3 * word.size() + 2 && key)
+				options.push_back(good_word{ size_t(i), size_t(j), size_t(key) });
+			match = 0;
+			key = 0;
 		}
 	}
 	return options.size();
-
 }
 
-void Generator::VerticalPlacement(const GoodWord& word, size_t number_of_word) noexcept {
+bool Board::placeNextHor(const std::u16string& word, std::vector<good_word>& options)const {
+	int match = 0;
+	int key = 0;
+	for (int j = 1; j < static_cast<int>(board.size()) - 1; j++) {
+		for (int i = 1; i < static_cast<int>(board.size()) - static_cast<int>(word.size()) - 1; i++) {
+			for (int k = 0; k < static_cast<int>(word.size()); k++) {
 
-	for (int i = 0; i < static_cast<int>(words_[number_of_word].size()); ++i) {
+				if (getSpot(j, i + k) == u'_')
+					match++;
 
-		if (board_[word.row + i][word.colomn] != '_')
-			check_intersection_[word.row + i][word.colomn] = true;
-		else
-			board_[word.row + i][word.colomn] = words_[number_of_word][i];
-	}
-}
+				if (getSpot(j, i + k) == word[k]) {
+					match++;
+					if (getSpot(j, i + k + 1) == '_' && getSpot(j, i + k - 1) == '_') {
+						match += 2;
+						key++;
+					}
+					else break;
+				}
 
-void Generator::HorizontalPlacement(const GoodWord& word, size_t number_of_word) noexcept {
+				if (getSpot(j + 1, i + k) == '_' && getSpot(j - 1, i + k) == '_')
+					match += 2;
 
-	for (int i = 0; i < static_cast<int>(words_[number_of_word].size()); ++i) {
+				if (getSpot(j, i - 1) == '_' && getSpot(j, i + word.size()) == '_') {
+					if (k == 0) match += 2;
+				}
+				else break;
 
-		if (board_[word.row][word.colomn + i] != '_')
-			check_intersection_[word.row][word.colomn + i] = true;
-		else
-			board_[word.row][word.colomn + i] = words_[number_of_word][i];
-	}
-}
+			}
 
-void Generator::HorizontalCleaning(const GoodWord& word, size_t number_of_word) noexcept {
-
-	for (int i = 0; i < static_cast<int>(words_[number_of_word].size()); ++i) {
-
-		if (check_intersection_[word.row][word.colomn + i]) {
-			check_intersection_[word.row][word.colomn + i] = false;
-			continue;
+			if (match == 3 * word.size() + 2 && key)
+				options.push_back(good_word{ size_t(j), size_t(i), size_t(key) });
+			match = 0;
+			key = 0;
 		}
-
-		board_[word.row][word.colomn + i] = '_';
 	}
-
-}
-
-void Generator::VerticalCleaning(const GoodWord& word, size_t number_of_word) noexcept {
-
-	for (int i = 0; i < static_cast<int>(words_[number_of_word].size()); ++i) {
-
-		if (check_intersection_[word.row + i][word.colomn]) {
-			check_intersection_[word.row + i][word.colomn] = false;
-			continue;
-		}
-
-		board_[word.row + i][word.colomn] = '_';
-
-	}
-
-}
-
-void Generator::HorizontalProcessing(std::vector<GoodWord>& options, size_t number_of_word, size_t count_used) {
-
-	used_[number_of_word] = true;
-
-	std::sort(options.begin(), options.end(), [](const GoodWord& w1, const GoodWord& w2) {
-		return w1.number_of_intersections > w2.number_of_intersections;
-		});
-
-	for (int i = 0; i < static_cast<int>(options.size()); ++i) {
-
-		HorizontalPlacement(options[i], number_of_word);
-		Generate(count_used + 1, Direction::VERTICALLY);
-
-		if (succsess)
-			return;
-
-		HorizontalCleaning(options[i], number_of_word);
-	}
-
-	used_[number_of_word] = false;
-
-}
-
-void Generator::VerticalProcessing(std::vector<GoodWord>& options, size_t number_of_word, size_t count_used) {
-
-	used_[number_of_word] = true;
-
-	std::sort(options.begin(), options.end(), [](const GoodWord& w1, const GoodWord& w2) {
-		return w1.number_of_intersections > w2.number_of_intersections;
-		});
-
-	for (int i = 0; i < static_cast<int>(options.size()); ++i) {
-
-		VerticalPlacement(options[i], number_of_word);
-		Generate(count_used + 1, Direction::HORIZONTALLY);
-
-		if (succsess)
-			return;
-
-		VerticalCleaning(options[i], number_of_word);
-	}
-
-	used_[number_of_word] = false;
-
+	return options.size();
 }

@@ -1,51 +1,48 @@
 #pragma once
-#include<iostream>
-#include <string>
 #include <vector>
-#include <algorithm>
-#include <ctime>
+#include <string>
+#include<ctime>
+#include<uchar.h>
+#include <codecvt>
 
-class Generator {
+class Board {
+private:
+	std::vector<std::u16string>words;
+	std::vector < std::vector<char16_t>>board = std::vector<std::vector<char16_t>>(50, std::vector<char16_t>(50, u'_'));
+	std::vector<std::vector<bool>> check_intersection = std::vector<std::vector<bool>>(50, std::vector<bool>(50, false));
 
-	struct GoodWord {
+	struct good_word {
 		size_t row;
 		size_t colomn;
 		size_t number_of_intersections;
 	};
-
-public:
-
-	enum class Direction {
-		VERTICALLY,
-		HORIZONTALLY
-	};
-
-	explicit Generator(std::vector<std::string>& words);
-
-	std::string GetCrossword(bool language_flag) const noexcept;
-	void Generate(size_t count_used, Direction dir);
-
-private:
-
-	bool HorizontalVariants(const std::string& word, std::vector<GoodWord>& options) const;
-	bool VerticalVariants(const std::string& word, std::vector<GoodWord>& options) const;
-
-	void VerticalPlacement(const GoodWord& word, size_t number_of_word) noexcept;
-	void HorizontalPlacement(const GoodWord& word, size_t number_of_word) noexcept;
-
-	void HorizontalCleaning(const GoodWord& word, size_t number_of_word) noexcept;
-	void VerticalCleaning(const GoodWord& word, size_t number_of_word) noexcept;
-
-	void VerticalProcessing(std::vector<GoodWord>& options, size_t number_of_word, size_t count_used);
-	void HorizontalProcessing(std::vector<GoodWord>& options, size_t number_of_word, size_t count_used);
-
-	std::vector<std::string> words_;
-	std::vector<bool> used_;
-	std::vector<std::vector<char>> board_;
-	std::vector<std::vector<bool>> check_intersection_;
-	bool succsess = false;
-
+	std::vector<bool> used;
+	inline char16_t getSpot(int, int)const noexcept;
+	inline void setSpot(char16_t, int, int)noexcept;
+	bool CREATION = false;
+	bool placeNextVer(const std::u16string&, std::vector<good_word>&)const;
+	bool placeNextHor(const std::u16string&, std::vector<good_word>&)const;
+	void Vertical_Placement(const good_word& word, int number_of_word)noexcept;
+	void Horizontal_Placement(const good_word& word, int number_of_word)noexcept;
+	void Horizontal_Cleaning(const good_word& word, int number_of_word)noexcept;
+	void Vertical_Cleaning(const good_word& word, int number_of_word)noexcept;
+	void Vertical_Proccessing(std::vector<good_word>& Possible_Options, int number_of_word, int count);
+	void Horizontal_Proccessing(std::vector<good_word>& Possible_Options, int number_of_word, int count);
+	size_t Upper_Bound = 50;
+	size_t  Lower_Bound = 0;
+	size_t Left_Bound = 50;
+	size_t Right_Bound = 0;
 	clock_t start = clock();
 	clock_t delay = 300 * CLOCKS_PER_SEC;
 
+public:
+	enum class direction {
+		ACROSS,
+		DOWN
+	};
+	Board(std::vector<std::u16string>& w);
+	Board() = default;
+	~Board() = default;
+	void Generater(int number_of_word, direction direct);
+	std::u16string Print_Board();
 };
