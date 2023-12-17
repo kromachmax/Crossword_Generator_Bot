@@ -1,184 +1,216 @@
 ﻿#include <stdio.h>
+#include "Generator.h"
 #include <tgbot/tgbot.h>
-#include<fstream>
-#include<uchar.h>
-#include <codecvt>
-#include"Header.h"
-#include <Windows.h>
-#include<ctime>
-#include<utility>
-#include<execution>
-#include<sqlite3.h>
+#include <unordered_map>
+#include <map>
+#include <sqlite3.h>
 
-void IncorrectMessages(TgBot::Bot& bot, TgBot::Message::Ptr& message, std::string&& mes, bool& language_flag) {
+long long users_count = -1;
 
-    if (language_flag) bot.getApi().sendMessage(message->chat->id, mes +
-        " Use /instruction for information on how to use the bot. \xF0\x9F\x94\xA7");
-    else bot.getApi().sendMessage(message->chat->id, mes +
-        " Используйте команду /instruction, для получения информации о боте. \xF0\x9F\x94\xA7");
+struct User
+{
+    bool language_flag = true;
+    bool number_input_flag = false;
+    bool word_input_flag = false;
+    int word_num = 0;
+    bool blocked = false;
+    std::string entered_words;
+    std::vector<std::string> words;
 
+};
+
+wchar_t Rus_upper(wchar_t sim)
+{
+    if (sim >= L'а' && sim <= L'я')
+        return (sim - 32);
+    else if (sim == L'ё')
+        return L'Ё';
+    else if (sim == L'й')
+        return L'Й';
+    return sim;
 }
 
+void IncorrectMessages(TgBot::Bot& bot, TgBot::Message::Ptr& message, const std::string& mes, User& user)
+{
+    std::string message_text;
+    if (user.language_flag)
+        message_text = u8" Use /instruction for information on how to use the bot. 🔧";
+    else
+        message_text = u8" Используйте команду /instruction, для получения информации о боте. 🔧";
 
-int users_count = 0;
-
-int callback(void* date, int argc, char** argv, char** azColName) {
-    users_count = std::stoi(argv[0]);
-    return 0;
+    bot.getApi().sendMessage(message->chat->id, mes + message_text);
 }
 
-void Instruction(TgBot::Bot& bot, TgBot::Message::Ptr& message, bool& language_flag) {
+void Instruction(TgBot::Bot& bot, TgBot::Message::Ptr& message, User& user)
+{
+    std::string instruction_text;
+    if (user.language_flag)
+        instruction_text = u8"🔸 To start, enter the /start command and select the language.\n"
+        u8"🔸 To get instructions for use, enter /instruction. 🔧\n"
+        u8"🔸 To start generating the crossword, type /generate.\n"
+        u8"Then you need to enter the number of words that the crossword will consist of. (2 - 20)\n"
+        u8"Then enter the words, one at a time in the message.\nThe word length can be no more than 20 characters.\n"
+        u8"A word can consist only of the letters of the alphabet of the language you have chosen.\n"
+        u8"After making sure that the entered words are correct, click \"YES\" and expect the result.\n"
+        u8"(up to 5 minutes) ⏰\n"
+        u8"⭐ Have a good use! ⭐";
+    else
+        instruction_text = u8"🔸 Используйте команду /start, для начала работы и выбора языка.\n"
+        u8"🔸 Используйте команду /instruction, для получения информации о боте. 🔧\n"
+        u8"🔸 Для того чтобы приступить к генерации кроссворда, используйте команду /generate.\n"
+        u8"Затем введите число слов, из которых будет состоять кроссворд. (2 - 20)\n"
+        u8"Затем введите слова, по одному в сообщении.\nДлина слова не более 20 символов.\n"
+        u8"Слово может состоять только из букв алфавита выбранного вами языка.\n"
+        u8"После убедитесь в правильности введенной информации и нажмите \"YES\". Ожидайте результат."
+        u8"\n(занимает до 5 минут) ⏰\n"
+        u8"⭐ Приятного использования! ⭐";
 
-    if (language_flag) bot.getApi().sendMessage(message->chat->id,
-        "\xF0\x9F\x94\xB8 To start, enter the /start command and select the language.\n"
-        "\xF0\x9F\x94\xB8 To get instructions for use, enter /instruction. \xF0\x9F\x94\xA7\n"
-        "\xF0\x9F\x94\xB8 To start generating the crossword, type /generate.\nThen you need to enter the number of "
-        "words that the crossword will consist of. (2 - 30)\n"
-        "Then enter the words, one at a time in the message.\nThe word length can be no more than 20 characters.\n"
-        "A word can consist only of letters of the Russian or English alphabet.\n"
-        "After making sure that the entered words are correct, click \"YES\" and expect the result.\n"
-        "(up to 5 minutes) \xE2\x8F\xB0\n"
-        "\xE2\xAD\x90 Have a good use! \xE2\xAD\x90");
-
-    else bot.getApi().sendMessage(message->chat->id,
-        "\xF0\x9F\x94\xB8 Используйте команду /start, для начала работы и выбора языка.\n"
-        "\xF0\x9F\x94\xB8 Используйте команду /instruction, для получения информации о боте. \xF0\x9F\x94\xA7\n"
-        "\xF0\x9F\x94\xB8 Для того чтобы приступить к генерации кроссворда, используйте команду /generate.\n"
-        "Затем введите число слов, из которых будет состоять кроссворд. (2 - 30)\n"
-        "Затем введите слова, по одному в сообщении.\nДлина слова не более 20 символов.\n"
-        "Слово может состоять только из букв русского или английского алфавитов.\n"
-        "После убедитесь в правильности введенной информации и нажмите \"YES\". Ожидайте результат."
-        "\n(занимает до 5 минут) \xE2\x8F\xB0\n"
-        "\xE2\xAD\x90 Приятного использования! \xE2\xAD\x90");
-
+    bot.getApi().sendMessage(message->chat->id, instruction_text);
 }
 
-void MakeTwoButtonsKeyboard(TgBot::InlineKeyboardMarkup::Ptr& keyboard, const std::string& b1, const std::string& b2) {
-
-    std::vector<TgBot::InlineKeyboardButton::Ptr> buttons{ std::make_shared<TgBot::InlineKeyboardButton>(),
-        std::make_shared<TgBot::InlineKeyboardButton>() };
+void MakeTwoButtonsKeyboard(TgBot::InlineKeyboardMarkup::Ptr& keyboard, const std::string& b1, const std::string& b2)
+{
+    std::vector<TgBot::InlineKeyboardButton::Ptr> buttons{ std::make_shared<TgBot::InlineKeyboardButton>(), std::make_shared<TgBot::InlineKeyboardButton>() };
     buttons[0]->text = b1;
     buttons[0]->callbackData = b1;
     buttons[1]->text = b2;
     buttons[1]->callbackData = b2;
     keyboard->inlineKeyboard.push_back(buttons);
-
 }
 
-bool toupper_u16(char16_t& ch) {
-    if (ch >= 1040 and ch <= 1071) return true;
-    else if (ch >= 1072 and ch <= 1103) {
-        ch -= 32;
-        return true;
-    }
-    else if (ch == 1105) {
-        ch = 1025;
-        return true;
-    }
-    else if (ch == 1025) return true;
-    else return false;
-}
-
-
-bool CheckWord(TgBot::Message::Ptr& message, bool language_flag, std::u16string& str) {
-
-
-    std::wstring_convert<std::codecvt<char16_t, char, std::mbstate_t>, char16_t> convert;
-    str = convert.from_bytes(message->text);
-
-
-    if (str.size() > 20 || !str.size() || message->text.find(u' ') != std::string::npos)
+bool CheckWord(TgBot::Message::Ptr& message, User& user)
+{
+    std::string message_text = message->text;
+    if (message_text.size() > 20 || message_text.size() < 2 || message_text.find(u8' ') != std::string::npos)
         return false;
 
-    if (language_flag) {
-
-        for (auto& sim : str) {
-            if (!((sim = std::toupper(sim)) >= 65 && (sim = std::toupper(sim)) <= 90))
+    if (user.language_flag)
+    {
+        for (auto& sim : message_text)
+        {
+            if (!(std::toupper(sim) >= u8'A' && std::toupper(sim) <= u8'Z'))
                 return false;
         }
-        return true;
-
     }
-    else {
-
-        for (auto& sim : str) {
-            if (!toupper_u16(sim))
+    else
+    {
+        for (auto& sim : FromUtf8(message_text))
+        {
+            if (!((Rus_upper(sim) >= L'А' && Rus_upper(sim) <= L'Я') || Rus_upper(sim) == L'Й' || Rus_upper(sim) == L'Ё'))
                 return false;
         }
-        return true;
     }
+    return true;
 }
 
-void BadEnter(std::vector<std::u16string>& words, int& word_num, bool& word_input_flag) {
-
-    words.clear();
-    word_num = 0;
-    word_input_flag = false;
-
+void BadEnter(User& user)
+{
+    user.words.clear();
+    user.word_num = 0;
+    user.word_input_flag = false;
 }
 
-int main(int argc, char* argv[]) {
+void GenerateCrossword(std::vector<std::string>& words, TgBot::Bot& bot, int64_t id, User& user)
+{
+    user.blocked = true;
 
-    SetConsoleOutputCP(65001);
+    bot.getApi().sendVideo(id, TgBot::InputFile::fromFile("giphy.gif.mp4", "video/mp4"));
 
-    TgBot::Bot bot("6401871694:AAF8NbDy684KxdD8yip28D9E6LKQ5k0pnIg");
+    Generator g;
+    g.Generate(words);
+
+    if (user.language_flag)
+        bot.getApi().sendMessage(id, u8"Generation completed.");
+    else
+        bot.getApi().sendMessage(id, u8"Генерация завершилась.");
+
+    std::string crossword = g.GetCrossword(user.language_flag);
+
+    std::ofstream file("crossword.rtf");
+    file << crossword;
+    file.close();
+
+    file.open("crossword.html");
+    file << crossword;
+    file.close();
+
+    bot.getApi().sendDocument(id, TgBot::InputFile::fromFile("crossword.rtf", "file/rtf"));
+    bot.getApi().sendDocument(id, TgBot::InputFile::fromFile("crossword.html", "file/html"));
+
+    user.blocked = false;
+
+    user.words.clear();
+}
+
+int callback(void* data, int argc, char** argv, char** azColName)
+{
+    users_count = std::stoi(argv[0]);
+    return 0;
+}
+
+
+int main(int argc, char* argv[])
+{
+    std::ifstream file("token.txt");
+    std::string token;
+    getline(file, token);
+    file.close();
+
+    std::unordered_map<int64_t, User> users;
+
+    TgBot::Bot bot(token);
+    TgBot::InlineKeyboardMarkup::Ptr keyboard_lang(new TgBot::InlineKeyboardMarkup);
+    MakeTwoButtonsKeyboard(keyboard_lang, u8"RU 🇷🇺", u8"EN 🇬🇧");
+    TgBot::InlineKeyboardMarkup::Ptr keyboard_gen(new TgBot::InlineKeyboardMarkup);
+    MakeTwoButtonsKeyboard(keyboard_gen, u8"YES ✅", u8"NO ❌");
+
 
     sqlite3* db;
 
-    TgBot::Message::Ptr message;
+    bot.getEvents().onAnyMessage([&bot, &users](TgBot::Message::Ptr message) {
+        long long chatId = message->chat->id;
 
-    TgBot::InlineKeyboardMarkup::Ptr keyboard_lang(new TgBot::InlineKeyboardMarkup);
-    MakeTwoButtonsKeyboard(keyboard_lang, "RU \xF0\x9F\x87\xB7\xF0\x9F\x87\xBA", "EN \xF0\x9F\x87\xAC\xF0\x9F\x87\xA7");
+        // Проверяем, есть ли пользователь в карте
+        if (users.find(chatId) == users.end()) {
+            // Если пользователя нет, создаем нового и добавляем его в карту
+            User newUser;
+            users[chatId] = newUser;
+        }
+        });
 
-    TgBot::InlineKeyboardMarkup::Ptr keyboard_gen(new TgBot::InlineKeyboardMarkup);
-    MakeTwoButtonsKeyboard(keyboard_gen, "YES \xE2\x9C\x85", "NO \xE2\x9D\x8C");
 
-    bool language_flag = true;
-    bool number_input_flag = false;
-    bool word_input_flag = false;
-    bool block_flag = false;
-    int word_num = 0;
+    bot.getEvents().onUnknownCommand([&bot, &users](TgBot::Message::Ptr message)
+        {
+            User& user = users[message->chat->id];
 
-    std::u16string entered_words;
-    std::vector<std::u16string> words;
+            if (user.blocked) return;
 
-    bot.getEvents().onUnknownCommand([&bot, &number_input_flag, &word_input_flag, &words,
-        &word_num, &block_flag, &language_flag](TgBot::Message::Ptr message) {
+            BadEnter(user);
+            user.number_input_flag = false;
 
-            if (block_flag)
-                return;
-
-            BadEnter(words, word_num, word_input_flag);
-            number_input_flag = false;
-
-            if (language_flag)
-                IncorrectMessages(bot, message, "Unknown Command.", language_flag);
+            if (user.language_flag)
+                IncorrectMessages(bot, message, u8"Unknown Command.", user);
             else
-                IncorrectMessages(bot, message, "Неизвестная команда.", language_flag);
-
+                IncorrectMessages(bot, message, u8"Неизвестная команда.", user);
         });
 
-    bot.getEvents().onCommand("instruction", [&bot, &number_input_flag, &word_input_flag, &words,
-        &word_num, &block_flag, &language_flag](TgBot::Message::Ptr message) {
+    bot.getEvents().onCommand("instruction", [&bot, &users](TgBot::Message::Ptr message)
+        {
+            User& user = users[message->chat->id];
 
-            if (block_flag)
-                return;
-
-            BadEnter(words, word_num, word_input_flag);
-            number_input_flag = false;
-            Instruction(bot, message, language_flag);
-
+            if (user.blocked) return;
+            BadEnter(user);
+            user.number_input_flag = false;
+            Instruction(bot, message, user);
         });
 
-    bot.getEvents().onCommand("start", [&bot, &number_input_flag, &keyboard_lang, &word_input_flag,
-        &words, &word_num, &block_flag, &language_flag, &db](TgBot::Message::Ptr message) {
-
-            if (block_flag)
-                return;
-
+    bot.getEvents().onCommand("start", [&bot, &keyboard_lang, &users, &db](TgBot::Message::Ptr message)
+        {
+            User& user = users[message->chat->id];
+            if (user.blocked) return;
             const std::string QUERY(
                 "CREATE TABLE IF NOT EXISTS USERS("
-                "USER_ID  INTEGER  NOT NULL,"
+                "USER_ID	INTEGER		NOT NULL,"
                 "UNIQUE(USER_ID)"
                 ");"
                 "INSERT OR IGNORE INTO USERS(USER_ID) VALUES(" + std::to_string(message->from->id) + ");"
@@ -188,208 +220,182 @@ int main(int argc, char* argv[]) {
             sqlite3_exec(db, QUERY.c_str(), callback, 0, nullptr);
             sqlite3_close(db);
 
+            BadEnter(user);
+            user.number_input_flag = false;
 
-            BadEnter(words, word_num, word_input_flag);
-            number_input_flag = false;
-
-            if (language_flag)
-                bot.getApi().sendMessage(message->chat->id, "Hi \xF0\x9F\x91\x8B " + message->chat->firstName + "! Choose the "
-                    "language in which it is convenient for you to communicate with me.", false, 0, keyboard_lang);
+            std::string message_text;
+            if (user.language_flag)
+                message_text = u8"Hi 👋 " + message->chat->firstName + u8"! Choose the language in which it is convenient for you to communicate with me.";
             else
-                bot.getApi().sendMessage(message->chat->id, "Привет \xF0\x9F\x91\x8B " + message->chat->firstName + "! Выберите "
-                    "язык на котором вам удобнее со мной общаться.", false, 0, keyboard_lang);
+                message_text = u8"Привет 👋 " + message->chat->firstName + u8"! Выберите язык на котором вам удобнее со мной общаться.";
 
+            bot.getApi().sendMessage(message->chat->id, message_text, false, 0, keyboard_lang);
         });
 
+    bot.getEvents().onCallbackQuery([&bot, &users](TgBot::CallbackQuery::Ptr query)
+        {
+            User& user = users[query->message->chat->id];
+            if (user.blocked) return;
+            user.number_input_flag = false;
 
-    bot.getEvents().onCallbackQuery([&bot, &number_input_flag, &language_flag, &word_input_flag,
-        &words, &word_num, &block_flag](TgBot::CallbackQuery::Ptr query) {
-
-
-            std::wstring_convert<std::codecvt<char16_t, char, std::mbstate_t>, char16_t> convert;
-            std::ofstream file("file.rtf");
-
-            if (block_flag)
-                return;
-
-            number_input_flag = false;
-
-            if (query->data == "NO \xE2\x9D\x8C" || query->data == "YES \xE2\x9C\x85") {
-                if (word_input_flag) {
-                    if (language_flag)
-                        bot.getApi().sendMessage(query->message->chat->id, "You didn't enter all the words. \xE2\x9C\x89");
+            if (query->data == u8"NO ❌" || query->data == u8"YES ✅")
+            {
+                if (user.word_input_flag)
+                {
+                    if (user.language_flag)
+                        bot.getApi().sendMessage(query->message->chat->id, u8"You didn't enter all the words. ✉️");
                     else
-                        bot.getApi().sendMessage(query->message->chat->id, "Вы ввели не все слова. \xE2\x9C\x89");
+                        bot.getApi().sendMessage(query->message->chat->id, u8"Вы ввели не все слова. ✉️");
                 }
-                else if (query->data == "NO \xE2\x9D\x8C") {
-                    BadEnter(words, word_num, word_input_flag);
-                    if (language_flag)
-                        IncorrectMessages(bot, query->message, "Words dropped.", language_flag);
+                else if (query->data == u8"NO ❌")
+                {
+                    BadEnter(user);
+                    if (user.language_flag)
+                        IncorrectMessages(bot, query->message, u8"Words dropped.", user);
                     else
-                        IncorrectMessages(bot, query->message, "Слова сброшены.", language_flag);
+                        IncorrectMessages(bot, query->message, u8"Слова сброшены.", user);
                 }
-                else if (words.size()) {
-                    if (language_flag)
-                        bot.getApi().sendMessage(query->message->chat->id,
-                            "Words accepted! Expect a crossword puzzle! This may take up to 5 minutes. \xE2\x8F\xB0");
+                else if (user.words.size())
+                {
+                    if (user.language_flag)
+                        bot.getApi().sendMessage(query->message->chat->id, u8"Words accepted! Expect a crossword puzzle! This may take up to 5 minutes. ⏰");
                     else
-                        bot.getApi().sendMessage(query->message->chat->id,
-                            "Слова приняты! Начинаю состовлять кроссворд! Это может занять до 5 минут. \xE2\x8F\xB0");
+                        bot.getApi().sendMessage(query->message->chat->id, u8"Слова приняты! Начинаю состовлять кроссворд! Это может занять до 5 минут. ⏰");
 
-                    block_flag = true;
-                    Board bot_generator(words);
-                    bot_generator.Generater(0, Board::direction::ACROSS);
-                    file << convert.to_bytes(bot_generator.Print_Board());
-                    file.close();
-                    bot.getApi().sendDocument(query->message->chat->id, TgBot::InputFile::fromFile("file.rtf", "file/rtf"));
-                    words.clear();
-                    block_flag = false;
+                    std::thread Thread(GenerateCrossword, std::ref(user.words), std::ref(bot), query->message->chat->id, std::ref(user));
+                    Thread.detach();
                 }
                 return;
             }
 
-            BadEnter(words, word_num, word_input_flag);
+            BadEnter(user);
 
-            if (query->data == "RU \xF0\x9F\x87\xB7\xF0\x9F\x87\xBA") {
-                bot.getApi().sendMessage(query->message->chat->id, "Выбран русский \xF0\x9F\x87\xB7\xF0\x9F\x87\xBA");
-                language_flag = false;
-                Instruction(bot, query->message, language_flag);
+            if (query->data == u8"RU 🇷🇺")
+            {
+                bot.getApi().sendMessage(query->message->chat->id, u8"Выбран русский 🇷🇺");
+                user.language_flag = false;
+                Instruction(bot, query->message, user);
             }
-            else if (query->data == "EN \xF0\x9F\x87\xAC\xF0\x9F\x87\xA7") {
-                bot.getApi().sendMessage(query->message->chat->id, "Selected English \xF0\x9F\x87\xAC\xF0\x9F\x87\xA7");
-                language_flag = true;
-                Instruction(bot, query->message, language_flag);
+            else if (query->data == u8"EN 🇬🇧")
+            {
+                bot.getApi().sendMessage(query->message->chat->id, u8"Selected English 🇬🇧");
+                user.language_flag = true;
+                Instruction(bot, query->message, user);
             }
-
         });
 
-    bot.getEvents().onCommand("generate", [&bot, &number_input_flag, &words, &word_num,
-        &word_input_flag, &block_flag, &language_flag](TgBot::Message::Ptr message) {
-
-            if (block_flag)
-                return;
-
-            BadEnter(words, word_num, word_input_flag);
-
-            if (language_flag)
-                bot.getApi().sendMessage(message->chat->id, "Enter number of words (2 - 30):");
+    bot.getEvents().onCommand("generate", [&bot, &users](TgBot::Message::Ptr message)
+        {
+            User& user = users[message->chat->id];
+            if (user.blocked) return;
+            BadEnter(user);
+            if (user.language_flag)
+                bot.getApi().sendMessage(message->chat->id, u8"Enter number of words (2 - 20):");
             else
-                bot.getApi().sendMessage(message->chat->id, "Введите число слов (2 - 30):");
-
-            number_input_flag = true;
-
+                bot.getApi().sendMessage(message->chat->id, u8"Введите число слов (2 - 20):");
+            user.number_input_flag = true;
         });
 
-    bot.getEvents().onCommand("users_count", [&bot, &block_flag](TgBot::Message::Ptr message) {
+    bot.getEvents().onNonCommandMessage([&bot, &users, &keyboard_gen](TgBot::Message::Ptr message)
+        {
 
-        if (block_flag)
-            return;
-
-        if (users_count == 0)
-            return;
-
-        bot.getApi().sendMessage(message->chat->id, std::to_string(users_count));
-
-        });
-
-    bot.getEvents().onNonCommandMessage([&bot, &number_input_flag, &word_num, &word_input_flag,
-        &words, &keyboard_gen, &entered_words, &block_flag, &language_flag](TgBot::Message::Ptr message) {
-
-            std::wstring_convert<std::codecvt<char16_t, char, std::mbstate_t>, char16_t> convert;
-
-            if (block_flag)
-                return;
-
-            if (word_input_flag) {
-
-                std::u16string str = convert.from_bytes(message->text);
-
-                if (!CheckWord(message, language_flag, str)) {
-
-                    if (language_flag)
-                        bot.getApi().sendMessage(message->chat->id,
-                            "\xF0\x9F\x9A\xAB The word does not match the requirements, try to enter a new one:");
+            User& user = users[message->chat->id];
+            if (user.blocked) return;
+            if (user.word_input_flag)
+            {
+                if (!CheckWord(message, user))
+                {
+                    if (user.language_flag)
+                        bot.getApi().sendMessage(message->chat->id, u8"❌ The word does not match the requirements, try to enter a new one:");
                     else
-                        bot.getApi().sendMessage(message->chat->id,
-                            "\xF0\x9F\x9A\xAB Слово не соответствует требованиям, попробуйте ввести новое:");
+                        bot.getApi().sendMessage(message->chat->id, u8"❌ Слово не соответствует требованиям, попробуйте ввести новое:");
                     return;
                 }
 
-                words.push_back(str);
-                --word_num;
+                user.words.push_back(message->text);
+                user.word_num--;
 
-                if (!word_num) {
-                    word_input_flag = false;
-                    for (const auto& word : words)
-                        entered_words += word + u'\n';
-                    if (language_flag)
-                        bot.getApi().sendMessage(message->chat->id, convert.to_bytes(entered_words) +
-                            "Are all words entered correctly?", false, 0, keyboard_gen);
+                if (!user.word_num)
+                {
+                    user.word_input_flag = false;
+
+                    for (const auto& word : user.words)
+                        user.entered_words += word + '\n';
+
+                    if (user.language_flag)
+                        bot.getApi().sendMessage(message->chat->id, user.entered_words + u8"Are all words entered correctly?", false, 0, keyboard_gen);
                     else
-                        bot.getApi().sendMessage(message->chat->id, convert.to_bytes(entered_words) +
-                            "Все слова введены правильно?", false, 0, keyboard_gen);
-
-                    entered_words.clear();
+                        bot.getApi().sendMessage(message->chat->id, user.entered_words + u8"Все слова введены правильно?", false, 0, keyboard_gen);
+                    user.entered_words.clear();
                 }
                 return;
             }
             try {
-                if (number_input_flag) {
-                    word_num = std::stoi(message->text);
+                if (user.number_input_flag)
+                {
+                    user.word_num = std::stoi(message->text);
 
-                    if (word_num < 1 || word_num > 30)
+                    if (user.word_num < 1 || user.word_num > 20)
                         throw std::invalid_argument(message->text);
 
-                    if (language_flag)
-                        bot.getApi().sendMessage(message->chat->id, "\xE2\x9A\xA1 Enter " + message->text +
-                            " words from which I will generate a crossword puzzle for you:");
+                    if (user.language_flag)
+                        bot.getApi().sendMessage(message->chat->id, u8"⚡ Enter " + message->text + u8" words from which I will generate a crossword puzzle for you:");
                     else
-                        bot.getApi().sendMessage(message->chat->id, "\xE2\x9A\xA1 Введите " + message->text +
-                            " слов, из которых я сгенерирую кроссворд для вас:");
+                        bot.getApi().sendMessage(message->chat->id, u8"⚡ Введите " + message->text + u8" слов, из которых я сгенерирую кроссворд для вас:");
 
-                    number_input_flag = false;
-                    word_input_flag = true;
+                    user.number_input_flag = false;
+                    user.word_input_flag = true;
                     return;
                 }
                 else
                     throw std::invalid_argument(message->text);
             }
-            catch (std::invalid_argument&) {
-                word_num = 0;
-                number_input_flag = false;
+            catch (std::invalid_argument&)
+            {
+                user.word_num = 0;
+                user.number_input_flag = false;
 
-                if (language_flag)
-                    IncorrectMessages(bot, message, "Incorrest message.", language_flag);
+                if (user.language_flag)
+                    IncorrectMessages(bot, message, u8"Incorrest message.", user);
                 else
-                    IncorrectMessages(bot, message, "Неверное сообщение.", language_flag);
+                    IncorrectMessages(bot, message, u8"Неверное сообщение.", user);
                 return;
             }
-
         });
 
-    try {
+    bot.getEvents().onCommand("users_count", [&bot](TgBot::Message::Ptr message)
+        {
+            if (users_count == -1)
+                return;
+            bot.getApi().sendMessage(message->chat->id, std::to_string(users_count));
+        });
+
+    try
+    {
         printf("Bot username: %s\n", bot.getApi().getMe()->username.c_str());
         TgBot::TgLongPoll longPoll(bot);
-        while (true) {
-            try {
+        while (true)
+        {
+            try
+            {
                 printf("Long poll started\n");
                 longPoll.start();
             }
-            catch (TgBot::TgException& e) {
-                std::string one(e.what());
-                std::string two("Forbidden: bot was blocked by the user");
-                if (one == two) {
-                    for (auto& i : bot.getApi().getUpdates()) {
-                        i->message = nullptr;
-                    }
+            catch (TgBot::TgException& e)
+            {
+                if ( e.what() == "Forbidden: bot was blocked by the user" )
+                {
+                    for (auto& up : bot.getApi().getUpdates())
+                        up = nullptr;
                 }
-                else throw;
+                else
+                    throw;
             }
         }
     }
-    catch (TgBot::TgException& e) {
+    catch (TgBot::TgException& e)
+    {
         printf("error: %s\n", e.what());
     }
-
     return 0;
 }
